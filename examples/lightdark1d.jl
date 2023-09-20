@@ -9,52 +9,36 @@ using Plots
 
 POMDPs.actionindex(pomdp::LightDark1D, a::Int) = findfirst(a .== actions(pomdp))
 
+function discretize(pomdp, policy, Ntraj=100, Nsamples=1, Nstates=5, Nobs=5)
+    # Generate a bunch of state samples
+    initial_state_samples = vcat([state_hist(simulate(HistoryRecorder(), pomdp, policy)) for _ in 1:Ntraj]...)
+    hist = sample_transitions(pomdp, initial_state_samples, Nsamples)
+
+    # Create a state abstraction
+    svecs = [convert_s(Vector{Float64}, h.s, pomdp) for h in hist if !isterminal(pomdp, h.s)]
+    spvecs = [convert_s(Vector{Float64}, h.sp, pomdp) for h in hist if !isterminal(pomdp, h.sp)]
+    discrete_states = KMeansDiscretizer(Nstates)([svecs..., spvecs...])
+    state_abstraction = NearestNeighborAbstraction(discrete_states)
+
+    # Create a observation abstraction
+    ovecs = [convert_o(Vector, h.o, pomdp) for h in hist]
+    discrete_obs = KMeansDiscretizer(Nobs)(ovecs)
+    observation_abstraction = NearestNeighborAbstraction(discrete_obs)
+
+    # Create the discretized pomdp
+    return DiscretizedPOMDP(pomdp, hist, state_abstraction, observation_abstraction)
+end
+
 pomdp = LightDark1D() 
 random_policy = RandomPolicy(pomdp)
 
-# Generate a bunch of state samples
-initial_state_samples = vcat([state_hist(simulate(HistoryRecorder(), pomdp, random_policy)) for _ in 1:100]...)
-hist = sample_transitions(pomdp, initial_state_samples, 10)
+solver_fn(discrete_pomdp) = solve(SARSOPSolver(), discrete_pomdp)
 
-# Create a state abstraction
-Nstates = 20
-svecs = [convert_s(Vector{Float64}, h.s, pomdp) for h in hist if !isterminal(pomdp, h.s)]
-spvecs = [convert_s(Vector{Float64}, h.sp, pomdp) for h in hist if !isterminal(pomdp, h.sp)]
-discrete_states = KMeansDiscretizer(Nstates)([svecs..., spvecs...])
-state_abstraction = NearestNeighborAbstraction(discrete_states)
+resolver = ReSolver(pomdp, discretize, solver_fn, random_policy, random_policy)
 
-# Create a observation abstraction
-Nobs = 20
-ovecs = [convert_o(Vector, h.o, pomdp) for h in hist]
-discrete_obs = KMeansDiscretizer(Nobs)(ovecs)
-observation_abstraction = NearestNeighborAbstraction(discrete_obs)
+hist = simulate(HistoryRecorder(max_steps=100), pomdp, resolver)
 
-# Create the discretized pomdp
-discrete_pomdp = DiscretizedPOMDP(pomdp, hist, state_abstraction, observation_abstraction)
 
-solver = SARSOPSolver()
-policy = solve(solver, discrete_pomdp)
-
-# Simulate the policy
-function gen_traj()
-    s = rand(initialstate(pomdp))
-    println("initial state: ", s.y)
-    b = initialstate(discrete_pomdp)
-    up = DiscreteUpdater(discrete_pomdp)
-    hist = []
-    while !isterminal(pomdp, s)
-        ai = action(policy, b)
-        a = actions(pomdp)[ai]
-        sp, o, r = @gen(:sp, :o, :r)(pomdp, s, a, Random.GLOBAL_RNG)
-
-        oab = discrete_pomdp.observation_abstraction(convert_o(Vector, o, pomdp))
-        bp = update(up, b, ai, oab)
-        push!(hist, (;s, a, sp, o, r))
-        s = sp
-        b = bp
-    end
-    return hist
-end
 
 # Plot the results
 function plot_traj(traj)
