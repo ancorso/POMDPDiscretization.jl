@@ -5,7 +5,9 @@ version = "0.1.0"
 
 [deps]
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 POMDPTools = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
 POMDPs = "a93abf59-7444-517b-a68a-c42f96afdd7d"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"

@@ -7,6 +7,9 @@ using ProgressMeter
 using Random
 using LinearAlgebra
 using SparseArrays
+using Distances
+using NearestNeighbors
+using SparseArrays
 
 export sample_transitions, simulate_with_re_solve, simulate_regular
 include("utils.jl")
