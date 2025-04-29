@@ -23,7 +23,7 @@ function fill_sparse_models(pomdp, history, state_abstraction, obs_abstraction)
     for (s, a, sp, o, r) in history
         s_i = isterminal(pomdp, s) ? Nstates : state_abstraction(s)
         a_i = actionindex(pomdp, a)
-        sp_i = isterminal(pomdp, sp) ? Nstates : state_abstraction(s)
+        sp_i = isterminal(pomdp, sp) ? Nstates : state_abstraction(sp)
         o_i = obs_abstraction(o)
         T[s_i, a_i][sp_i] += 1
         O[a_i, sp_i][o_i] += 1
